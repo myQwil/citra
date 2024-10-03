@@ -67,12 +67,14 @@ bool EmuWindow::IsWithinTouchscreen(const Layout::FramebufferLayout& layout, uns
 #endif
 
     if (Settings::values.render_3d.GetValue() == Settings::StereoRenderOption::SideBySide) {
+        unsigned difl = layout.bottom_screen.left - layout.top_screen.left;
+        unsigned difr = difl + layout.bottom_screen.GetWidth();
         return (framebuffer_y >= layout.bottom_screen.top &&
                 framebuffer_y < layout.bottom_screen.bottom &&
-                ((framebuffer_x >= layout.bottom_screen.left / 2 &&
-                  framebuffer_x < layout.bottom_screen.right / 2) ||
-                 (framebuffer_x >= (layout.bottom_screen.left / 2) + (layout.width / 2) &&
-                  framebuffer_x < (layout.bottom_screen.right / 2) + (layout.width / 2))));
+                ((framebuffer_x >= difl &&
+                  framebuffer_x < difr) ||
+                 (framebuffer_x >= layout.width / 2 + difl &&
+                  framebuffer_x < layout.width / 2 + difr)));
     } else if (Settings::values.render_3d.GetValue() == Settings::StereoRenderOption::CardboardVR) {
         return (framebuffer_y >= layout.bottom_screen.top &&
                 framebuffer_y < layout.bottom_screen.bottom &&
@@ -97,13 +99,8 @@ std::tuple<unsigned, unsigned> EmuWindow::ClipToTouchScreen(unsigned new_x, unsi
             new_x -=
                 (framebuffer_layout.width / 2) - (framebuffer_layout.cardboard.user_x_shift * 2);
     }
-    if (Settings::values.render_3d.GetValue() == Settings::StereoRenderOption::SideBySide) {
-        new_x = std::max(new_x, framebuffer_layout.bottom_screen.left / 2);
-        new_x = std::min(new_x, framebuffer_layout.bottom_screen.right / 2 - 1);
-    } else {
-        new_x = std::max(new_x, framebuffer_layout.bottom_screen.left);
-        new_x = std::min(new_x, framebuffer_layout.bottom_screen.right - 1);
-    }
+    new_x = std::max(new_x, framebuffer_layout.bottom_screen.left);
+    new_x = std::min(new_x, framebuffer_layout.bottom_screen.right - 1);
 
     new_y = std::max(new_y, framebuffer_layout.bottom_screen.top);
     new_y = std::min(new_y, framebuffer_layout.bottom_screen.bottom - 1);
@@ -135,9 +132,9 @@ bool EmuWindow::TouchPressed(unsigned framebuffer_x, unsigned framebuffer_y) {
     std::scoped_lock guard(touch_state->mutex);
     if (Settings::values.render_3d.GetValue() == Settings::StereoRenderOption::SideBySide) {
         touch_state->touch_x =
-            static_cast<float>(framebuffer_x - framebuffer_layout.bottom_screen.left / 2) /
-            (framebuffer_layout.bottom_screen.right / 2 -
-             framebuffer_layout.bottom_screen.left / 2);
+            static_cast<float>(framebuffer_x -
+            (framebuffer_layout.bottom_screen.left - framebuffer_layout.top_screen.left)) /
+             framebuffer_layout.bottom_screen.GetWidth();
     } else {
         touch_state->touch_x =
             static_cast<float>(framebuffer_x - framebuffer_layout.bottom_screen.left) /
